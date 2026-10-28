@@ -1,0 +1,19 @@
+.page {
+  color: #fff;
+  padding: 120px 40px 50px;
+  text-align: left;
+}
+
+.heading {
+  margin: 0 0 20px;
+}
+
+.message {
+  margin: 0;
+}
+
+.homeLink {
+  display: inline-block;
+  color: #e50914;
+  margin-top: 30px;
+}

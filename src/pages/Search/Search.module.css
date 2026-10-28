@@ -1,0 +1,25 @@
+.page {
+  color: #fff;
+  padding: 120px 40px 50px;
+}
+
+.heading {
+  margin: 0 0 24px;
+  font-size: 2rem;
+}
+
+.message {
+  margin: 0;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.homeLink {
+  display: inline-block;
+  margin-top: 32px;
+  color: #e50914;
+}

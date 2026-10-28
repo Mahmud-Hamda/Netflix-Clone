@@ -1,0 +1,49 @@
+.title {
+  color: white;
+  margin: 0 0 12px;
+  text-align: left;
+}
+
+/* Make wrapper stable */
+.slideShow {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+/* Swiper container */
+.slideShow :global(.swiper) {
+  height: 265px;
+  padding: 0 50px;
+}
+
+/* Slides */
+.slideShow :global(.swiper-slide) {
+  display: flex;
+  align-items: center;
+  height: 100%; /* remove 130% */
+}
+
+/* Navigation buttons base style */
+.slideShow :global(.swiper-button-prev),
+.slideShow :global(.swiper-button-next) {
+  background: transparent !important;
+  color: white !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Smaller arrow icon */
+.slideShow :global(.swiper-button-prev::after),
+.slideShow :global(.swiper-button-next::after) {
+  font-size: 14px !important;
+}
+
+/* Show on hover */
+.slideShow:hover :global(.swiper-button-prev),
+.slideShow:hover :global(.swiper-button-next) {
+  opacity: 1;
+  pointer-events: auto;
+}

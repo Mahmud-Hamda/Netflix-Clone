@@ -1,0 +1,16 @@
+.page {
+  color: #fff;
+  padding: 50px;
+  padding-top: 100px;
+  text-align: center;
+}
+
+.message {
+  color: #fff;
+  font-weight: 700;
+}
+
+.homeLink {
+  color: #e50914;
+  text-decoration: underline;
+}

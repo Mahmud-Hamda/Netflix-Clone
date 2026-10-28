@@ -1,0 +1,14 @@
+.mainWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  padding: 80px 2% 30px;
+  background-color: black;
+}
+
+.error {
+  margin: 0;
+  padding: 120px 8% 40px;
+  color: #fff;
+  text-align: center;
+}

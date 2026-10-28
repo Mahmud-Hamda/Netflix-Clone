@@ -1,0 +1,24 @@
+.page {
+  color: #fff;
+  padding: 120px 40px 50px;
+  max-width: 720px;
+}
+
+.heading {
+  margin-top: 0;
+}
+
+.page h2 {
+  margin-bottom: 6px;
+  font-size: 1.1rem;
+}
+
+.page p {
+  margin-top: 0;
+  color: #d2d2d2;
+  line-height: 1.5;
+}
+
+.homeLink {
+  color: #e50914;
+}

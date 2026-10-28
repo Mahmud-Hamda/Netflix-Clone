@@ -1,0 +1,93 @@
+.footer {
+  background: #171717;
+  color: #808080;
+  margin-top: 64px;
+  padding: 64px 0 24px;
+}
+
+.footerInner {
+  width: min(920px, 88vw);
+  margin: 0 auto;
+}
+
+.socialRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.socialLink {
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 1.7rem;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.socialLink:hover {
+  color: #e50914;
+}
+
+.socialLink:focus-visible,
+.linksGrid a:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid #ffffff;
+  outline-offset: 4px;
+}
+
+.linksGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 14px 42px;
+  margin-bottom: 28px;
+}
+
+.linksGrid a {
+  color: #808080;
+  text-decoration: none;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  transition: color 0.2s ease;
+}
+
+.linksGrid a:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.copy {
+  color: #808080;
+  font-size: 0.8rem;
+  margin: 0 0 8px;
+}
+
+.creditLink {
+  color: #b3b3b3;
+}
+
+@media (max-width: 900px) {
+  .linksGrid {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 12px 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .footer {
+    padding: 44px 0 12px;
+  }
+
+  .socialRow {
+    gap: 18px;
+  }
+
+  .socialLink {
+    font-size: 1.45rem;
+  }
+
+  .linksGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
