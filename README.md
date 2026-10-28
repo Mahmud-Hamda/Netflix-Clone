@@ -14,8 +14,6 @@ A movie and TV browser styled after Netflix. Posters, backdrops, descriptions, a
 
 Accounts, the signed-in session, and My List live in the browser’s local storage. There is no account server, so a list stays on the device and browser where it was saved.
 
-Browse by Languages is still a placeholder page.
-
 ## Stack
 
 - React 19

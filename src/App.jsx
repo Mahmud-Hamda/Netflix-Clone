@@ -2,7 +2,6 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import Layout from "./Components/Layout/Layout";
 import { useProfile } from "./context/useProfile";
 import Account from "./pages/Account/Account";
-import BrowseByLanguage from "./pages/BrowseByLanguage/BrowseByLanguage";
 import Help from "./pages/Help/Help";
 import Home from "./pages/Home/Home";
 import Movies from "./pages/Movies/Movies";
@@ -40,7 +39,6 @@ function App() {
           <Route path="movies" element={<Movies />} />
           <Route path="news" element={<NewsAndPopular />} />
           <Route path="mylist" element={<MyList />} />
-          <Route path="browse" element={<BrowseByLanguage />} />
           <Route path="search" element={<Search />} />
           <Route path="account" element={<Account />} />
           <Route path="help" element={<Help />} />

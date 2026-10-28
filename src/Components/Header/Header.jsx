@@ -67,14 +67,6 @@ export default function Header() {
           >
             My List
           </NavLink>
-          <NavLink
-            className={({ isActive }) =>
-              `${styles.navLink} ${isActive ? styles.active : ""}`
-            }
-            to="/browse"
-          >
-            Browse by Languages
-          </NavLink>
         </nav>
 
         <div className={styles.actions}>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import BackHome from "../../Components/BackHome/BackHome";
 import Card from "../../Components/Card/Card";
 import { searchTitles } from "../../Utility/tmdb";
 import styles from "./Search.module.css";
@@ -42,6 +43,7 @@ export default function Search() {
 
   return (
     <div className={styles.page}>
+      <BackHome />
       <h1 className={styles.heading}>
         {query ? `Results for “${query}”` : "Search"}
       </h1>
@@ -62,9 +64,6 @@ export default function Search() {
           ))}
         </div>
       )}
-      <Link to="/home" className={styles.homeLink}>
-        Back to Home
-      </Link>
     </div>
   );
 }

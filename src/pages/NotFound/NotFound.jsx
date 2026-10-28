@@ -1,14 +1,16 @@
-import { Link } from "react-router-dom";
+import BackHome from "../../Components/BackHome/BackHome";
 import styles from "./NotFound.module.css";
 
 const NotFound = () => {
   return (
     <div className={styles.page}>
-      <h1 className={styles.message}>This is Not Found page!</h1>
-      <p>Sorry, the page you are looking for does not exist.</p>
-      <Link to="/home" className={styles.homeLink}>
-        Go Back Home
-      </Link>
+      <p className={styles.code}>404</p>
+      <h1 className={styles.title}>Page not found</h1>
+      <p className={styles.copy}>
+        That address is not part of this site. Head back to the home page to
+        keep browsing.
+      </p>
+      <BackHome />
     </div>
   );
 };

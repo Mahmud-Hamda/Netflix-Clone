@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import BackHome from "../../Components/BackHome/BackHome";
 import { useMyList } from "../../context/useMyList";
 import { useProfile } from "../../context/useProfile";
 import styles from "./Account.module.css";
@@ -43,6 +43,7 @@ export default function Account() {
 
   return (
     <div className={styles.page}>
+      <BackHome />
       <h1 className={styles.heading}>Account</h1>
       <p className={styles.note}>
         Signed in as {name} ({email}). {items.length}{" "}
@@ -100,9 +101,6 @@ export default function Account() {
       <button type="button" className={styles.signOut} onClick={signOut}>
         Sign Out
       </button>
-      <Link to="/home" className={styles.homeLink}>
-        Back to Home
-      </Link>
     </div>
   );
 }

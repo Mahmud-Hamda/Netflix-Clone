@@ -17,9 +17,3 @@
   flex-wrap: wrap;
   gap: 16px;
 }
-
-.homeLink {
-  display: inline-block;
-  margin-top: 32px;
-  color: #e50914;
-}

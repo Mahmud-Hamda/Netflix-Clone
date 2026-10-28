@@ -1,9 +1,10 @@
-import { Link } from "react-router-dom";
+import BackHome from "../../Components/BackHome/BackHome";
 import styles from "./Help.module.css";
 
 export default function Help() {
   return (
     <div className={styles.page}>
+      <BackHome />
       <h1 className={styles.heading}>Help Center</h1>
       <section>
         <h2>Search</h2>
@@ -42,9 +43,6 @@ export default function Help() {
           you have not opened yet.
         </p>
       </section>
-      <Link to="/home" className={styles.homeLink}>
-        Back to Home
-      </Link>
     </div>
   );
 }

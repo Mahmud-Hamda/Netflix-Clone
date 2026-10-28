@@ -1,0 +1,24 @@
+.link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 0 0 24px;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.link:hover,
+.link:focus-visible {
+  background: #fff;
+  border-color: #fff;
+  color: #111;
+  outline: none;
+}

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import BackHome from "../../Components/BackHome/BackHome";
 import SlideShow from "../../Components/SlideShow/SlideShow";
 import { useMyList } from "../../context/useMyList";
 import styles from "./MyList.module.css";
@@ -9,6 +9,7 @@ const MyList = () => {
 
   return (
     <div className={styles.page}>
+      <BackHome />
       <h1 className={styles.heading}>My List</h1>
       {saved.length === 0 ? (
         <p className={styles.message}>
@@ -17,9 +18,6 @@ const MyList = () => {
       ) : (
         <SlideShow title={`${saved.length} saved`} movies={saved} />
       )}
-      <Link to="/home" className={styles.homeLink}>
-        Back to Home
-      </Link>
     </div>
   );
 };
