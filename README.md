@@ -52,8 +52,10 @@ Open the URL Vite prints, usually `http://localhost:5173`.
 
 ## Deploy
 
-Vercel and Netlify both work. Set `VITE_TMDB_API_KEY` in the host’s environment variables before the first build. Vite reads that variable while it builds.
+The site is deployed on Vercel. Set `VITE_TMDB_API_KEY` in the Vercel project's environment variables before the first build. Vite reads that variable while it builds.
 
-Refreshing a route such as `/movies` or `/signin` needs the host to serve `index.html`. This repo includes `vercel.json` for Vercel and `public/_redirects` for Netlify.
+Refreshing a route such as `/movies` or `/signin` needs the host to serve `index.html`. The rewrite rule in `vercel.json` does that.
+
+See [`docs/routing.md`](docs/routing.md) for how the routes and layout fit together.
 
 Do not commit `.env`. It is listed in `.gitignore`. Any `VITE_` variable is copied into the public JavaScript bundle, so treat the TMDB key as public and regenerate it on TMDB if it leaks.
