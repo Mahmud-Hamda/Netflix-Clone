@@ -1,22 +1,31 @@
-import BackHome from "../../Components/BackHome/BackHome";
-import SlideShow from "../../Components/SlideShow/SlideShow";
+import BackToHomeLink from "../../components/BackToHomeLink/BackToHomeLink";
+import TitleCarousel from "../../components/TitleCarousel/TitleCarousel";
 import { useMyList } from "../../context/useMyList";
 import styles from "./MyList.module.css";
 
+/**
+ * My List page (`/mylist`): the signed-in account's saved titles, or a hint
+ * when nothing is saved.
+ *
+ * @returns {JSX.Element}
+ */
 const MyList = () => {
-  const { items } = useMyList();
-  const saved = items.filter((item) => item.poster_path);
+  const { savedTitles } = useMyList();
+  const titlesWithPosters = savedTitles.filter((title) => title.poster_path);
 
   return (
     <div className={styles.page}>
-      <BackHome />
+      <BackToHomeLink />
       <h1 className={styles.heading}>My List</h1>
-      {saved.length === 0 ? (
+      {titlesWithPosters.length === 0 ? (
         <p className={styles.message}>
           Nothing saved yet. Use My List on the banner, or the plus on a title.
         </p>
       ) : (
-        <SlideShow title={`${saved.length} saved`} movies={saved} />
+        <TitleCarousel
+          heading={`${titlesWithPosters.length} saved`}
+          titles={titlesWithPosters}
+        />
       )}
     </div>
   );

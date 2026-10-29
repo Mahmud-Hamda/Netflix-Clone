@@ -1,42 +1,42 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import logo from "../../assets/image/logo.png";
+import logo from "../../assets/images/logo.png";
 import { useProfile } from "../../context/useProfile";
+import { getPostAuthDestination } from "../../utils/authRedirect";
 import styles from "../SignIn/SignIn.module.css";
 
-function destinationFrom(location) {
-  const requested = location.state?.from;
-  if (requested && requested !== "/signin" && requested !== "/signup") {
-    return requested;
-  }
-  return "/home";
-}
-
+/**
+ * Sign-up page (`/signup`). Creates a local account, signs in to it, and
+ * redirects to the page the user originally requested. Shares the sign-in
+ * page's styles.
+ *
+ * @returns {JSX.Element}
+ */
 export default function SignUp() {
-  const { signedIn, register } = useProfile();
+  const { isSignedIn, register } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [pending, setPending] = useState(false);
-  const destination = destinationFrom(location);
+  const [isPending, setIsPending] = useState(false);
+  const destination = getPostAuthDestination(location);
 
-  if (signedIn) {
+  if (isSignedIn) {
     return <Navigate to={destination} replace />;
   }
 
-  const submit = async (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (pending) return;
-    setPending(true);
+    if (isPending) return;
+    setIsPending(true);
     setError("");
-    const result = await register({ name, email, password, confirm });
+    const result = await register({ name, email, password, confirmPassword });
     if (!result.ok) {
       setError(result.error);
-      setPending(false);
+      setIsPending(false);
       return;
     }
     navigate(destination, { replace: true });
@@ -44,7 +44,7 @@ export default function SignUp() {
 
   return (
     <main className={styles.page}>
-      <form className={styles.card} onSubmit={submit}>
+      <form className={styles.card} onSubmit={handleSubmit}>
         <img className={styles.logo} src={logo} alt="Netflix" />
         <h1 className={styles.title}>Create account</h1>
         <p className={styles.note}>
@@ -102,13 +102,13 @@ export default function SignUp() {
             type="password"
             name="confirm"
             autoComplete="new-password"
-            value={confirm}
-            onChange={(event) => setConfirm(event.target.value)}
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
           />
         </div>
         {error && <p className={styles.error}>{error}</p>}
-        <button type="submit" className={styles.button} disabled={pending}>
-          {pending ? "Creating account..." : "Create Account"}
+        <button type="submit" className={styles.button} disabled={isPending}>
+          {isPending ? "Creating account..." : "Create Account"}
         </button>
         <p className={styles.switch}>
           Already have an account? <Link to="/signin" state={location.state}>Sign in</Link>

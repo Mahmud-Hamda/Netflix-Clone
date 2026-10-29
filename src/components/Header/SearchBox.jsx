@@ -2,29 +2,38 @@ import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { usePlayer } from "../../context/usePlayer";
-import { titleOf } from "../../Utility/titles";
-import { searchTitles } from "../../Utility/tmdb";
+import { getDisplayTitle } from "../../utils/titles";
+import { searchTitles } from "../../services/tmdbService";
 import styles from "./Header.module.css";
 
-const POSTER_BASE = "https://image.tmdb.org/t/p/w92";
+const POSTER_BASE_URL = "https://image.tmdb.org/t/p/w92";
+const SEARCH_DEBOUNCE_MS = 350;
+const MAX_PREVIEW_RESULTS = 6;
 
+/**
+ * Renders the header search toggle. When open it shows an input with a
+ * debounced preview of up to six matches; submitting goes to the full
+ * `/search` page. It closes on route change and on clicks outside.
+ *
+ * @returns {JSX.Element}
+ */
 export default function SearchBox() {
   const navigate = useNavigate();
   const location = useLocation();
   const { openInfo } = usePlayer();
   const containerRef = useRef(null);
-  const [showSearch, setShowSearch] = useState(false);
-  const [openPath, setOpenPath] = useState(location.pathname);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [openedAtPath, setOpenedAtPath] = useState(location.pathname);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [status, setStatus] = useState("");
-  const term = query.trim();
-  const activeTerm = showSearch ? term : "";
+  const trimmedQuery = query.trim();
+  const activeTerm = isSearchOpen ? trimmedQuery : "";
   const [requestedTerm, setRequestedTerm] = useState("");
 
-  if (showSearch && openPath !== location.pathname) {
-    setOpenPath(location.pathname);
-    setShowSearch(false);
+  if (isSearchOpen && openedAtPath !== location.pathname) {
+    setOpenedAtPath(location.pathname);
+    setIsSearchOpen(false);
   }
 
   if (activeTerm !== requestedTerm) {
@@ -34,51 +43,55 @@ export default function SearchBox() {
   }
 
   useEffect(() => {
-    if (!showSearch) return undefined;
+    if (!isSearchOpen) return undefined;
 
     const handleClickOutside = (event) => {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target)
       ) {
-        setShowSearch(false);
+        setIsSearchOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showSearch]);
+  }, [isSearchOpen]);
 
   useEffect(() => {
     if (!requestedTerm) return undefined;
 
-    let cancelled = false;
-    const timer = setTimeout(async () => {
+    let isCancelled = false;
+    const debounceTimer = setTimeout(async () => {
       try {
-        const found = await searchTitles(requestedTerm);
-        if (cancelled) return;
-        setResults(found.slice(0, 6));
-        setStatus(found.length ? "ready" : "empty");
+        const matches = await searchTitles(requestedTerm);
+        if (isCancelled) return;
+        setResults(matches.slice(0, MAX_PREVIEW_RESULTS));
+        setStatus(matches.length ? "ready" : "empty");
       } catch {
-        if (!cancelled) {
+        if (!isCancelled) {
           setResults([]);
           setStatus("error");
         }
       }
-    }, 350);
+    }, SEARCH_DEBOUNCE_MS);
 
     return () => {
-      cancelled = true;
-      clearTimeout(timer);
+      isCancelled = true;
+      clearTimeout(debounceTimer);
     };
   }, [requestedTerm]);
 
-  const goToResults = (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
-    const term = query.trim();
-    if (!term) return;
-    setShowSearch(false);
-    navigate(`/search?q=${encodeURIComponent(term)}`);
+    if (!trimmedQuery) return;
+    setIsSearchOpen(false);
+    navigate(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+  };
+
+  const handleToggle = () => {
+    setOpenedAtPath(location.pathname);
+    setIsSearchOpen((wasOpen) => !wasOpen);
   };
 
   return (
@@ -87,16 +100,13 @@ export default function SearchBox() {
         type="button"
         className={styles.searchButton}
         aria-label="Search"
-        aria-expanded={showSearch}
-        onClick={() => {
-          setOpenPath(location.pathname);
-          setShowSearch((open) => !open);
-        }}
+        aria-expanded={isSearchOpen}
+        onClick={handleToggle}
       >
         <Search size={20} />
       </button>
-      {showSearch && (
-        <form className={styles.searchForm} onSubmit={goToResults}>
+      {isSearchOpen && (
+        <form className={styles.searchForm} onSubmit={handleSubmit}>
           <input
             type="search"
             value={query}
@@ -106,7 +116,7 @@ export default function SearchBox() {
             autoComplete="off"
             onChange={(event) => setQuery(event.target.value)}
           />
-          {query.trim() && (
+          {trimmedQuery && (
             <div className={styles.panel}>
               {status === "loading" && (
                 <p className={styles.panelMessage}>Searching...</p>
@@ -119,26 +129,26 @@ export default function SearchBox() {
               {status === "empty" && (
                 <p className={styles.panelMessage}>No titles matched.</p>
               )}
-              {results.map((movie) => (
+              {results.map((result) => (
                 <button
-                  key={`${movie.media_type}-${movie.id}`}
+                  key={`${result.media_type}-${result.id}`}
                   type="button"
                   className={styles.resultButton}
-                  onClick={() => openInfo(movie)}
+                  onClick={() => openInfo(result)}
                 >
                   <img
                     className={styles.resultPoster}
-                    src={`${POSTER_BASE}${movie.poster_path}`}
+                    src={`${POSTER_BASE_URL}${result.poster_path}`}
                     alt=""
                   />
-                  <span>{titleOf(movie)}</span>
+                  <span>{getDisplayTitle(result)}</span>
                 </button>
               ))}
               {status === "ready" && (
                 <Link
                   className={styles.seeAll}
-                  to={`/search?q=${encodeURIComponent(query.trim())}`}
-                  onClick={() => setShowSearch(false)}
+                  to={`/search?q=${encodeURIComponent(trimmedQuery)}`}
+                  onClick={() => setIsSearchOpen(false)}
                 >
                   See all results
                 </Link>

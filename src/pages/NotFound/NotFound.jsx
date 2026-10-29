@@ -1,6 +1,11 @@
-import BackHome from "../../Components/BackHome/BackHome";
+import BackToHomeLink from "../../components/BackToHomeLink/BackToHomeLink";
 import styles from "./NotFound.module.css";
 
+/**
+ * 404 page for any unknown path inside the signed-in layout.
+ *
+ * @returns {JSX.Element}
+ */
 const NotFound = () => {
   return (
     <div className={styles.page}>
@@ -10,7 +15,7 @@ const NotFound = () => {
         That address is not part of this site. Head back to the home page to
         keep browsing.
       </p>
-      <BackHome />
+      <BackToHomeLink />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
-import Layout from "./Components/Layout/Layout";
+import Layout from "./components/Layout/Layout";
 import { useProfile } from "./context/useProfile";
 import Account from "./pages/Account/Account";
 import Help from "./pages/Help/Help";
@@ -13,11 +13,17 @@ import SignIn from "./pages/SignIn/SignIn";
 import SignUp from "./pages/SignUp/SignUp";
 import TvShows from "./pages/TvShows/TvShows";
 
+/**
+ * Route guard that renders the nested routes when signed in, and otherwise
+ * redirects to `/signin`, remembering the requested path in `state.from`.
+ *
+ * @returns {JSX.Element}
+ */
 function RequireAuth() {
-  const { signedIn } = useProfile();
+  const { isSignedIn } = useProfile();
   const location = useLocation();
 
-  if (!signedIn) {
+  if (!isSignedIn) {
     return (
       <Navigate to="/signin" replace state={{ from: location.pathname }} />
     );
@@ -26,6 +32,12 @@ function RequireAuth() {
   return <Outlet />;
 }
 
+/**
+ * Defines the app's routes: public sign-in/sign-up pages and the signed-in
+ * pages inside the shared layout.
+ *
+ * @returns {JSX.Element}
+ */
 function App() {
   return (
     <Routes>

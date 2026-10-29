@@ -1,10 +1,16 @@
-import BackHome from "../../Components/BackHome/BackHome";
+import BackToHomeLink from "../../components/BackToHomeLink/BackToHomeLink";
 import styles from "./Help.module.css";
 
+/**
+ * Help Center page (`/help`): short explanations of search, play, accounts,
+ * My List, and notifications.
+ *
+ * @returns {JSX.Element}
+ */
 export default function Help() {
   return (
     <div className={styles.page}>
-      <BackHome />
+      <BackToHomeLink />
       <h1 className={styles.heading}>Help Center</h1>
       <section>
         <h2>Search</h2>

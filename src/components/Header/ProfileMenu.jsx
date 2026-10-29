@@ -4,26 +4,39 @@ import { Link } from "react-router-dom";
 import { useProfile } from "../../context/useProfile";
 import styles from "./Header.module.css";
 
+/**
+ * Renders the avatar button and its dropdown with the account name and email,
+ * Account and Help Center links, and Sign Out. Clicking outside closes it.
+ *
+ * @returns {JSX.Element}
+ */
 export default function ProfileMenu() {
   const { name, email, signOut } = useProfile();
   const containerRef = useRef(null);
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!isOpen) return undefined;
 
     const handleClickOutside = (event) => {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target)
       ) {
-        setOpen(false);
+        setIsOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
+  }, [isOpen]);
+
+  const closeMenu = () => setIsOpen(false);
+
+  const handleSignOut = () => {
+    setIsOpen(false);
+    signOut();
+  };
 
   return (
     <div className={styles.profileContainer} ref={containerRef}>
@@ -31,29 +44,29 @@ export default function ProfileMenu() {
         type="button"
         className={styles.profileButton}
         aria-label="Profile menu"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((wasOpen) => !wasOpen)}
       >
         <div className={styles.userIcon}>
           <User size={20} />
         </div>
         <ChevronDown size={20} />
       </button>
-      {open && (
+      {isOpen && (
         <div className={styles.profileDropdown}>
           <p className={styles.profileName}>{name}</p>
           <p className={styles.profileEmail}>{email}</p>
           <Link
             to="/account"
             className={styles.dropdownItem}
-            onClick={() => setOpen(false)}
+            onClick={closeMenu}
           >
             Account
           </Link>
           <Link
             to="/help"
             className={styles.dropdownItem}
-            onClick={() => setOpen(false)}
+            onClick={closeMenu}
           >
             Help Center
           </Link>
@@ -61,10 +74,7 @@ export default function ProfileMenu() {
           <button
             type="button"
             className={styles.dropdownItem}
-            onClick={() => {
-              setOpen(false);
-              signOut();
-            }}
+            onClick={handleSignOut}
           >
             Sign Out
           </button>

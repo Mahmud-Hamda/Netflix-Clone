@@ -1,6 +1,12 @@
 import { FaFacebookF, FaInstagram, FaTwitter, FaYoutube } from "react-icons/fa";
 import styles from "./Footer.module.css";
 
+/**
+ * Renders the site footer: placeholder social and company links, the
+ * student-project disclaimer, and the TMDB credit.
+ *
+ * @returns {JSX.Element}
+ */
 export default function Footer() {
   return (
     <footer className={styles.footer}>

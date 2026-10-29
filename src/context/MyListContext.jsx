@@ -1,95 +1,129 @@
 import { useEffect, useMemo, useState } from "react";
-import { listKey, toListItem } from "../Utility/titles";
+import { getTitleKey, normalizeTitle } from "../utils/titles";
 import { useProfile } from "./useProfile";
 import { MyListContext } from "./useMyList";
 
-const STORAGE_KEY = "netflix-clone-lists";
-const LEGACY_KEY = "netflix-clone-my-list";
+/** @typedef {import("../services/tmdbService").Title} Title */
+
+const LISTS_STORAGE_KEY = "netflix-clone-lists";
+// Single shared list from before lists were stored per account; it is moved
+// into the first account that signs in.
+const LEGACY_LIST_STORAGE_KEY = "netflix-clone-my-list";
+const MAX_SAVED_TITLES = 100;
 const EMPTY_LIST = [];
 
-function validItems(parsed) {
+/**
+ * @param {unknown} parsed - Parsed JSON that should be a list of titles.
+ * @returns {Title[]} The entries that have an id, or an empty list.
+ */
+function filterValidTitles(parsed) {
   if (!Array.isArray(parsed)) return [];
   return parsed.filter((item) => item && item.id);
 }
 
-function readLists() {
+/**
+ * Reads every account's saved list from storage.
+ *
+ * @returns {Record<string, Title[]>} Saved titles keyed by account id.
+ */
+function readStoredLists() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const parsed = JSON.parse(localStorage.getItem(LISTS_STORAGE_KEY) || "{}");
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return {};
     }
     return Object.fromEntries(
-      Object.entries(parsed).map(([userId, items]) => [userId, validItems(items)]),
+      Object.entries(parsed).map(([userId, titles]) => [
+        userId,
+        filterValidTitles(titles),
+      ]),
     );
   } catch {
     return {};
   }
 }
 
+/**
+ * Reads the pre-account shared list, if one is still stored.
+ *
+ * @returns {Title[]}
+ */
 function readLegacyList() {
   try {
-    return validItems(JSON.parse(localStorage.getItem(LEGACY_KEY) || "[]"));
+    return filterValidTitles(
+      JSON.parse(localStorage.getItem(LEGACY_LIST_STORAGE_KEY) || "[]"),
+    );
   } catch {
     return [];
   }
 }
 
+/**
+ * Provides the signed-in account's My List and keeps every account's list in
+ * local storage.
+ *
+ * @param {Object} props
+ * @param {import("react").ReactNode} props.children
+ * @returns {JSX.Element}
+ */
 export function MyListProvider({ children }) {
   const { userId } = useProfile();
-  const [lists, setLists] = useState(readLists);
+  const [listsByUser, setListsByUser] = useState(readStoredLists);
 
-  if (userId && lists[userId] === undefined) {
-    const legacy = readLegacyList();
-    setLists((current) => {
-      if (current[userId] !== undefined) return current;
-      return { ...current, [userId]: legacy };
+  if (userId && listsByUser[userId] === undefined) {
+    const legacyList = readLegacyList();
+    setListsByUser((currentLists) => {
+      if (currentLists[userId] !== undefined) return currentLists;
+      return { ...currentLists, [userId]: legacyList };
     });
   }
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lists));
-    if (userId && Array.isArray(lists[userId])) {
-      localStorage.removeItem(LEGACY_KEY);
+    localStorage.setItem(LISTS_STORAGE_KEY, JSON.stringify(listsByUser));
+    if (userId && Array.isArray(listsByUser[userId])) {
+      localStorage.removeItem(LEGACY_LIST_STORAGE_KEY);
     }
-  }, [lists, userId]);
+  }, [listsByUser, userId]);
 
-  const items = (userId && lists[userId]) || EMPTY_LIST;
+  const savedTitles = (userId && listsByUser[userId]) || EMPTY_LIST;
 
   const value = useMemo(() => {
-    const has = (movie) =>
-      items.some((item) => listKey(item) === listKey(movie));
+    const isInList = (title) =>
+      savedTitles.some((item) => getTitleKey(item) === getTitleKey(title));
 
-    const add = (movie) => {
+    const addToList = (title) => {
       if (!userId) return;
-      const item = toListItem(movie);
-      setLists((current) => {
-        const existing = current[userId] ?? [];
-        if (existing.some((entry) => listKey(entry) === listKey(item))) {
-          return current;
+      const item = normalizeTitle(title);
+      setListsByUser((currentLists) => {
+        const existing = currentLists[userId] ?? [];
+        if (existing.some((entry) => getTitleKey(entry) === getTitleKey(item))) {
+          return currentLists;
         }
         return {
-          ...current,
-          [userId]: [item, ...existing].slice(0, 100),
+          ...currentLists,
+          [userId]: [item, ...existing].slice(0, MAX_SAVED_TITLES),
         };
       });
     };
 
-    const remove = (movie) => {
+    const removeFromList = (title) => {
       if (!userId) return;
-      const key = listKey(movie);
-      setLists((current) => ({
-        ...current,
-        [userId]: (current[userId] ?? []).filter((item) => listKey(item) !== key),
+      const titleKey = getTitleKey(title);
+      setListsByUser((currentLists) => ({
+        ...currentLists,
+        [userId]: (currentLists[userId] ?? []).filter(
+          (item) => getTitleKey(item) !== titleKey,
+        ),
       }));
     };
 
-    const toggle = (movie) => {
-      if (has(movie)) remove(movie);
-      else add(movie);
+    const toggleInList = (title) => {
+      if (isInList(title)) removeFromList(title);
+      else addToList(title);
     };
 
-    return { items, has, add, remove, toggle };
-  }, [items, userId]);
+    return { savedTitles, isInList, addToList, removeFromList, toggleInList };
+  }, [savedTitles, userId]);
 
   return (
     <MyListContext.Provider value={value}>{children}</MyListContext.Provider>

@@ -1,33 +1,41 @@
 import { useEffect, useState } from "react";
-import { listKey, mediaTypeOf, titleOf } from "../../Utility/titles";
-import { movieInstance } from "../../Utility/MovieInstance";
-import { pickYouTubeVideo, tmdbPath } from "../../Utility/tmdb";
+import { getDisplayTitle, getMediaType, getTitleKey } from "../../utils/titles";
+import { tmdbClient } from "../../services/tmdbClient";
+import { buildTmdbPath, pickYouTubeVideo } from "../../services/tmdbService";
 import { usePlayer } from "../../context/usePlayer";
 import styles from "./TrailerModal.module.css";
 
+/**
+ * Renders the trailer dialog for the title opened with `openTrailer`. It
+ * looks up the title's videos on TMDB and embeds the best YouTube match, or
+ * shows a message when none exists. Renders nothing when no title is open.
+ *
+ * @returns {JSX.Element | null}
+ */
 export default function TrailerModal() {
-  const { trailer, closeTrailer } = usePlayer();
-  const trailerKey = trailer ? listKey(trailer) : "";
+  const { trailerTitle, closeTrailer } = usePlayer();
+  const trailerKey = trailerTitle ? getTitleKey(trailerTitle) : "";
   const [loadedKey, setLoadedKey] = useState("");
   const [status, setStatus] = useState("loading");
   const [videoKey, setVideoKey] = useState("");
+  // Results from a previous title stay in state until the new request settles.
   const viewStatus = loadedKey === trailerKey ? status : "loading";
 
   useEffect(() => {
-    if (!trailer) return undefined;
+    if (!trailerTitle) return undefined;
 
-    let cancelled = false;
-    const key = trailerKey;
+    let isCancelled = false;
+    const requestKey = trailerKey;
 
     async function loadTrailer() {
       try {
-        const type = mediaTypeOf(trailer);
-        const { data } = await movieInstance.get(
-          tmdbPath(`/${type}/${trailer.id}/videos`),
+        const mediaType = getMediaType(trailerTitle);
+        const { data } = await tmdbClient.get(
+          buildTmdbPath(`/${mediaType}/${trailerTitle.id}/videos`),
         );
         const video = pickYouTubeVideo(data.results);
-        if (cancelled) return;
-        setLoadedKey(key);
+        if (isCancelled) return;
+        setLoadedKey(requestKey);
         if (!video) {
           setStatus("empty");
           return;
@@ -35,8 +43,8 @@ export default function TrailerModal() {
         setVideoKey(video.key);
         setStatus("ready");
       } catch {
-        if (!cancelled) {
-          setLoadedKey(key);
+        if (!isCancelled) {
+          setLoadedKey(requestKey);
           setStatus("error");
         }
       }
@@ -44,13 +52,13 @@ export default function TrailerModal() {
 
     loadTrailer();
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
-  }, [trailer, trailerKey]);
+  }, [trailerTitle, trailerKey]);
 
-  if (!trailer) return null;
+  if (!trailerTitle) return null;
 
-  const title = titleOf(trailer);
+  const displayTitle = getDisplayTitle(trailerTitle);
 
   return (
     <div className={styles.backdrop} onClick={closeTrailer}>
@@ -58,11 +66,11 @@ export default function TrailerModal() {
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
-        aria-label={`${title} trailer`}
+        aria-label={`${displayTitle} trailer`}
         onClick={(event) => event.stopPropagation()}
       >
         <div className={styles.toolbar}>
-          <h2 className={styles.title}>{title}</h2>
+          <h2 className={styles.title}>{displayTitle}</h2>
           <button type="button" className={styles.close} onClick={closeTrailer}>
             Close
           </button>
@@ -78,7 +86,7 @@ export default function TrailerModal() {
         {viewStatus === "ready" && (
           <div className={styles.frame}>
             <iframe
-              title={`${title} trailer`}
+              title={`${displayTitle} trailer`}
               src={`https://www.youtube-nocookie.com/embed/${videoKey}?autoplay=1`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen

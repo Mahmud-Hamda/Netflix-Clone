@@ -1,3 +1,6 @@
+/** @typedef {import("../services/tmdbService").Title} Title */
+
+/** TMDB genre ids (movie and TV) mapped to short display names. */
 const GENRE_NAMES = {
   28: "Action",
   12: "Adventure",
@@ -28,38 +31,71 @@ const GENRE_NAMES = {
   10768: "War & Politics",
 };
 
-export function mediaTypeOf(movie) {
-  if (movie?.media_type === "movie" || movie?.media_type === "tv") {
-    return movie.media_type;
+/**
+ * Determines whether a title is a movie or a TV show. Falls back to checking
+ * for a `title` field when TMDB omits `media_type` (discover and list endpoints).
+ *
+ * @param {Title | null | undefined} title
+ * @returns {"movie" | "tv"}
+ */
+export function getMediaType(title) {
+  if (title?.media_type === "movie" || title?.media_type === "tv") {
+    return title.media_type;
   }
-  return movie?.title ? "movie" : "tv";
+  return title?.title ? "movie" : "tv";
 }
 
-export function listKey(movie) {
-  return `${mediaTypeOf(movie)}-${movie?.id}`;
+/**
+ * Builds a key that is unique across movies and shows, e.g. `"movie-550"`.
+ *
+ * @param {Title | null | undefined} title
+ * @returns {string}
+ */
+export function getTitleKey(title) {
+  return `${getMediaType(title)}-${title?.id}`;
 }
 
-export function titleOf(movie) {
-  return movie?.title || movie?.name || "Untitled";
+/**
+ * Returns the name to show for a movie or TV show.
+ *
+ * @param {Title | null | undefined} title
+ * @returns {string} The movie title, the show name, or `"Untitled"`.
+ */
+export function getDisplayTitle(title) {
+  return title?.title || title?.name || "Untitled";
 }
 
-export function genreLabels(movie, limit = 3) {
-  return (movie?.genre_ids ?? [])
-    .map((id) => GENRE_NAMES[id])
+/**
+ * Maps a title's genre ids to display names, skipping unknown ids.
+ *
+ * @param {Title | null | undefined} title
+ * @param {number} [limit=3] - Maximum number of names to return.
+ * @returns {string[]}
+ */
+export function getGenreNames(title, limit = 3) {
+  return (title?.genre_ids ?? [])
+    .map((genreId) => GENRE_NAMES[genreId])
     .filter(Boolean)
     .slice(0, limit);
 }
 
-export function toListItem(movie) {
+/**
+ * Copies only the fields the app uses, with defaults and an explicit
+ * `media_type`, so the result is small enough to store in My List.
+ *
+ * @param {Title} title
+ * @returns {Title}
+ */
+export function normalizeTitle(title) {
   return {
-    id: movie.id,
-    title: movie.title || "",
-    name: movie.name || "",
-    overview: movie.overview || "",
-    poster_path: movie.poster_path || "",
-    backdrop_path: movie.backdrop_path || "",
-    media_type: mediaTypeOf(movie),
-    genre_ids: movie.genre_ids || [],
-    vote_average: movie.vote_average ?? null,
+    id: title.id,
+    title: title.title || "",
+    name: title.name || "",
+    overview: title.overview || "",
+    poster_path: title.poster_path || "",
+    backdrop_path: title.backdrop_path || "",
+    media_type: getMediaType(title),
+    genre_ids: title.genre_ids || [],
+    vote_average: title.vote_average ?? null,
   };
 }

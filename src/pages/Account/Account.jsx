@@ -1,69 +1,75 @@
 import { useState } from "react";
-import BackHome from "../../Components/BackHome/BackHome";
+import BackToHomeLink from "../../components/BackToHomeLink/BackToHomeLink";
 import { useMyList } from "../../context/useMyList";
 import { useProfile } from "../../context/useProfile";
 import styles from "./Account.module.css";
 
+/**
+ * Account page (`/account`): shows who is signed in and how many titles are
+ * saved, and lets the user rename the profile, change the password, or sign out.
+ *
+ * @returns {JSX.Element}
+ */
 export default function Account() {
   const { name, email, updateName, changePassword, signOut } = useProfile();
-  const { items } = useMyList();
-  const [draft, setDraft] = useState(name);
+  const { savedTitles } = useMyList();
+  const [nameDraft, setNameDraft] = useState(name);
   const [nameMessage, setNameMessage] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
-  const [nextPassword, setNextPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
-  const [passwordError, setPasswordError] = useState(false);
-  const [pending, setPending] = useState(false);
+  const [hasPasswordError, setHasPasswordError] = useState(false);
+  const [isPending, setIsPending] = useState(false);
 
-  const saveName = (event) => {
+  const handleNameSubmit = (event) => {
     event.preventDefault();
-    const accepted = updateName(draft);
-    setNameMessage(accepted ? "Name saved." : "Enter a display name.");
+    const isAccepted = updateName(nameDraft);
+    setNameMessage(isAccepted ? "Name saved." : "Enter a display name.");
   };
 
-  const savePassword = async (event) => {
+  const handlePasswordSubmit = async (event) => {
     event.preventDefault();
-    if (pending) return;
-    setPending(true);
+    if (isPending) return;
+    setIsPending(true);
     const result = await changePassword({
       currentPassword,
-      nextPassword,
-      confirm,
+      newPassword,
+      confirmPassword,
     });
-    setPasswordError(!result.ok);
+    setHasPasswordError(!result.ok);
     setPasswordMessage(result.ok ? "Password updated." : result.error);
     if (result.ok) {
       setCurrentPassword("");
-      setNextPassword("");
-      setConfirm("");
+      setNewPassword("");
+      setConfirmPassword("");
     }
-    setPending(false);
+    setIsPending(false);
   };
 
   return (
     <div className={styles.page}>
-      <BackHome />
+      <BackToHomeLink />
       <h1 className={styles.heading}>Account</h1>
       <p className={styles.note}>
-        Signed in as {name} ({email}). {items.length}{" "}
-        {items.length === 1 ? "title is" : "titles are"} saved in My List for
+        Signed in as {name} ({email}). {savedTitles.length}{" "}
+        {savedTitles.length === 1 ? "title is" : "titles are"} saved in My List for
         this account on this browser.
       </p>
-      <form className={styles.form} onSubmit={saveName}>
+      <form className={styles.form} onSubmit={handleNameSubmit}>
         <label htmlFor="account-name">Display name</label>
         <input
           id="account-name"
-          value={draft}
+          value={nameDraft}
           autoComplete="name"
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => setNameDraft(event.target.value)}
         />
         <button type="submit">Save</button>
       </form>
       {nameMessage && <p className={styles.note}>{nameMessage}</p>}
 
       <h2 className={styles.subheading}>Password</h2>
-      <form className={styles.form} onSubmit={savePassword}>
+      <form className={styles.form} onSubmit={handlePasswordSubmit}>
         <label htmlFor="current-password">Current password</label>
         <input
           id="current-password"
@@ -77,23 +83,23 @@ export default function Account() {
           id="next-password"
           type="password"
           autoComplete="new-password"
-          value={nextPassword}
-          onChange={(event) => setNextPassword(event.target.value)}
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
         />
         <label htmlFor="confirm-password">Confirm new password</label>
         <input
           id="confirm-password"
           type="password"
           autoComplete="new-password"
-          value={confirm}
-          onChange={(event) => setConfirm(event.target.value)}
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
         />
-        <button type="submit" disabled={pending}>
-          {pending ? "Updating..." : "Update password"}
+        <button type="submit" disabled={isPending}>
+          {isPending ? "Updating..." : "Update password"}
         </button>
       </form>
       {passwordMessage && (
-        <p className={passwordError ? styles.error : styles.note}>
+        <p className={hasPasswordError ? styles.error : styles.note}>
           {passwordMessage}
         </p>
       )}

@@ -2,15 +2,24 @@ import "swiper/css";
 import "swiper/css/navigation";
 import { Navigation } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
-import Card from "../Card/Card";
-import styles from "./SlideShow.module.css";
+import TitleCard from "../TitleCard/TitleCard";
+import styles from "./TitleCarousel.module.css";
 
-export default function SlideShow({ title, movies = [] }) {
-  if (!movies.length) return null;
+/**
+ * Renders a headed, horizontally scrolling row of title cards with
+ * previous/next arrows. Renders nothing when there are no titles.
+ *
+ * @param {Object} props
+ * @param {string} props.heading - Row heading, e.g. "Top Rated".
+ * @param {import("../../services/tmdbService").Title[]} [props.titles=[]] - Movies or shows to show.
+ * @returns {JSX.Element | null}
+ */
+export default function TitleCarousel({ heading, titles = [] }) {
+  if (!titles.length) return null;
 
   return (
     <div className={styles.slideShow}>
-      <h2 className={styles.title}>{title}</h2>
+      <h2 className={styles.title}>{heading}</h2>
 
       <Swiper
         modules={[Navigation]}
@@ -22,9 +31,9 @@ export default function SlideShow({ title, movies = [] }) {
           1024: { slidesPerView: 5.5, spaceBetween: 10 },
         }}
       >
-        {movies.map((movie) => (
-          <SwiperSlide key={`${movie.media_type || "title"}-${movie.id}`}>
-            <Card movie={movie} />
+        {titles.map((title) => (
+          <SwiperSlide key={`${title.media_type || "title"}-${title.id}`}>
+            <TitleCard title={title} />
           </SwiperSlide>
         ))}
       </Swiper>

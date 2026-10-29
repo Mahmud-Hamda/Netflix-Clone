@@ -3,46 +3,71 @@ import {
   createSalt,
   hashPassword,
   normalizeEmail,
+  readAccounts,
   readSession,
-  readUsers,
   validateRegistration,
   validateSignIn,
+  writeAccounts,
   writeSession,
-  writeUsers,
-} from "../Utility/auth";
+} from "../services/authService";
 import { ProfileContext } from "./useProfile";
 
+/** @typedef {import("../services/authService").Account} Account */
+
+/**
+ * Reports whether the browser exposes the Web Crypto APIs used for hashing
+ * (they are missing on insecure origins).
+ *
+ * @returns {boolean}
+ */
 function canHashPasswords() {
   return Boolean(crypto?.subtle && crypto?.getRandomValues);
 }
 
+/**
+ * Provides the signed-in account and account actions, and keeps accounts and
+ * the session in local storage.
+ *
+ * @param {Object} props
+ * @param {import("react").ReactNode} props.children
+ * @returns {JSX.Element}
+ */
 export function ProfileProvider({ children }) {
-  const [users, setUsers] = useState(readUsers);
+  const [accounts, setAccounts] = useState(readAccounts);
   const [session, setSession] = useState(readSession);
 
-  const known = users.some((user) => user.id === session.userId);
-  if (session.userId && !known) {
+  const hasSessionAccount = accounts.some(
+    (account) => account.id === session.userId,
+  );
+  if (session.userId && !hasSessionAccount) {
     setSession({ userId: "" });
   }
 
   useEffect(() => {
-    writeUsers(users);
-  }, [users]);
+    writeAccounts(accounts);
+  }, [accounts]);
 
   useEffect(() => {
     writeSession(session);
   }, [session]);
 
   const value = useMemo(() => {
-    const current = users.find((user) => user.id === session.userId) ?? null;
+    /** @type {Account | null} */
+    const currentAccount =
+      accounts.find((account) => account.id === session.userId) ?? null;
 
     return {
-      signedIn: Boolean(current),
-      userId: current?.id ?? "",
-      name: current?.name ?? "",
-      email: current?.email ?? "",
-      async register({ name, email, password, confirm }) {
-        const error = validateRegistration({ name, email, password, confirm });
+      isSignedIn: Boolean(currentAccount),
+      userId: currentAccount?.id ?? "",
+      name: currentAccount?.name ?? "",
+      email: currentAccount?.email ?? "",
+      async register({ name, email, password, confirmPassword }) {
+        const error = validateRegistration({
+          name,
+          email,
+          password,
+          confirmPassword,
+        });
         if (error) return { ok: false, error };
         if (!canHashPasswords()) {
           return {
@@ -50,8 +75,8 @@ export function ProfileProvider({ children }) {
             error: "This browser cannot store a password securely.",
           };
         }
-        const nextEmail = normalizeEmail(email);
-        if (users.some((user) => user.email === nextEmail)) {
+        const normalizedEmail = normalizeEmail(email);
+        if (accounts.some((account) => account.email === normalizedEmail)) {
           return {
             ok: false,
             error: "An account with that email already exists.",
@@ -59,20 +84,22 @@ export function ProfileProvider({ children }) {
         }
         const salt = createSalt();
         const passwordHash = await hashPassword(password, salt);
-        const user = {
-          id: nextEmail,
-          email: nextEmail,
+        const newAccount = {
+          id: normalizedEmail,
+          email: normalizedEmail,
           name: name.trim().slice(0, 40),
           salt,
           passwordHash,
         };
-        setUsers((currentUsers) => {
-          if (currentUsers.some((entry) => entry.email === nextEmail)) {
-            return currentUsers;
+        setAccounts((currentAccounts) => {
+          if (
+            currentAccounts.some((account) => account.email === normalizedEmail)
+          ) {
+            return currentAccounts;
           }
-          return [...currentUsers, user];
+          return [...currentAccounts, newAccount];
         });
-        setSession({ userId: user.id });
+        setSession({ userId: newAccount.id });
         return { ok: true };
       },
       async signIn({ email, password }) {
@@ -84,62 +111,71 @@ export function ProfileProvider({ children }) {
             error: "This browser cannot check a password securely.",
           };
         }
-        const nextEmail = normalizeEmail(email);
-        const user = users.find((entry) => entry.email === nextEmail);
-        if (!user) {
+        const normalizedEmail = normalizeEmail(email);
+        const account = accounts.find(
+          (entry) => entry.email === normalizedEmail,
+        );
+        if (!account) {
           return { ok: false, error: "No account matches that email." };
         }
-        const passwordHash = await hashPassword(password, user.salt);
-        if (passwordHash !== user.passwordHash) {
+        const passwordHash = await hashPassword(password, account.salt);
+        if (passwordHash !== account.passwordHash) {
           return { ok: false, error: "That password is incorrect." };
         }
-        setSession({ userId: user.id });
+        setSession({ userId: account.id });
         return { ok: true };
       },
       updateName(name) {
-        const nextName = name.trim().slice(0, 40);
-        if (!nextName || !current) return false;
-        setUsers((currentUsers) =>
-          currentUsers.map((user) =>
-            user.id === current.id ? { ...user, name: nextName } : user,
+        const trimmedName = name.trim().slice(0, 40);
+        if (!trimmedName || !currentAccount) return false;
+        setAccounts((currentAccounts) =>
+          currentAccounts.map((account) =>
+            account.id === currentAccount.id
+              ? { ...account, name: trimmedName }
+              : account,
           ),
         );
         return true;
       },
-      async changePassword({ currentPassword, nextPassword, confirm }) {
-        if (!current) {
+      async changePassword({ currentPassword, newPassword, confirmPassword }) {
+        if (!currentAccount) {
           return { ok: false, error: "Sign in again to change your password." };
         }
         if (!currentPassword) {
           return { ok: false, error: "Enter your current password." };
         }
-        if (nextPassword.length < 6) {
+        if (newPassword.length < 6) {
           return {
             ok: false,
             error: "Use at least 6 characters for the new password.",
           };
         }
-        if (nextPassword.length > 72) {
+        if (newPassword.length > 72) {
           return {
             ok: false,
             error: "Use 72 characters or fewer for the new password.",
           };
         }
-        if (nextPassword !== confirm) {
+        if (newPassword !== confirmPassword) {
           return { ok: false, error: "Passwords do not match." };
         }
-        if (currentPassword === nextPassword) {
+        if (currentPassword === newPassword) {
           return { ok: false, error: "Choose a different password." };
         }
-        const currentHash = await hashPassword(currentPassword, current.salt);
-        if (currentHash !== current.passwordHash) {
+        const currentHash = await hashPassword(
+          currentPassword,
+          currentAccount.salt,
+        );
+        if (currentHash !== currentAccount.passwordHash) {
           return { ok: false, error: "Current password is incorrect." };
         }
         const salt = createSalt();
-        const passwordHash = await hashPassword(nextPassword, salt);
-        setUsers((currentUsers) =>
-          currentUsers.map((user) =>
-            user.id === current.id ? { ...user, salt, passwordHash } : user,
+        const passwordHash = await hashPassword(newPassword, salt);
+        setAccounts((currentAccounts) =>
+          currentAccounts.map((account) =>
+            account.id === currentAccount.id
+              ? { ...account, salt, passwordHash }
+              : account,
           ),
         );
         return { ok: true };
@@ -148,7 +184,7 @@ export function ProfileProvider({ children }) {
         setSession({ userId: "" });
       },
     };
-  }, [users, session]);
+  }, [accounts, session]);
 
   return (
     <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>

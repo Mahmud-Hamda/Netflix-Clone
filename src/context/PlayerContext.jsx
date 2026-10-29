@@ -1,48 +1,57 @@
 import { useEffect, useMemo, useState } from "react";
-import { toListItem } from "../Utility/titles";
+import { normalizeTitle } from "../utils/titles";
 import { PlayerContext } from "./usePlayer";
 
+/**
+ * Provides the open/closed state of the info and trailer dialogs. While either
+ * dialog is open it locks page scrolling, and Escape closes the trailer first,
+ * then the info dialog.
+ *
+ * @param {Object} props
+ * @param {import("react").ReactNode} props.children
+ * @returns {JSX.Element}
+ */
 export function PlayerProvider({ children }) {
-  const [info, setInfo] = useState(null);
-  const [trailer, setTrailer] = useState(null);
+  const [infoTitle, setInfoTitle] = useState(null);
+  const [trailerTitle, setTrailerTitle] = useState(null);
 
   useEffect(() => {
-    if (!info && !trailer) return undefined;
+    if (!infoTitle && !trailerTitle) return undefined;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    const onKeyDown = (event) => {
+    const handleKeyDown = (event) => {
       if (event.key !== "Escape") return;
-      if (trailer) setTrailer(null);
-      else setInfo(null);
+      if (trailerTitle) setTrailerTitle(null);
+      else setInfoTitle(null);
     };
 
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [info, trailer]);
+  }, [infoTitle, trailerTitle]);
 
   const value = useMemo(
     () => ({
-      info,
-      trailer,
-      openInfo(movie) {
-        setInfo(toListItem(movie));
+      infoTitle,
+      trailerTitle,
+      openInfo(title) {
+        setInfoTitle(normalizeTitle(title));
       },
-      openTrailer(movie) {
-        setTrailer(toListItem(movie));
+      openTrailer(title) {
+        setTrailerTitle(normalizeTitle(title));
       },
       closeInfo() {
-        setInfo(null);
+        setInfoTitle(null);
       },
       closeTrailer() {
-        setTrailer(null);
+        setTrailerTitle(null);
       },
     }),
-    [info, trailer],
+    [infoTitle, trailerTitle],
   );
 
   return (

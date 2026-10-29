@@ -1,29 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
-import { movieInstance } from "../../Utility/MovieInstance";
-import requests from "../../Utility/requestUrls";
-import SlideShow from "../SlideShow/SlideShow";
-import styles from "./DisplayRow.module.css";
+import { tmdbClient } from "../../services/tmdbClient";
+import TMDB_ENDPOINTS from "../../services/tmdbEndpoints";
+import { hasTmdbApiKey } from "../../services/tmdbService";
+import TitleCarousel from "../TitleCarousel/TitleCarousel";
+import styles from "./CategoryRows.module.css";
 
-const ROWS = {
-  trending: { title: "Netflix Trending", request: requests.fetchTrending },
+/** Browse categories in display order, each with its row heading and TMDB endpoint. */
+const CATEGORIES = {
+  trending: { heading: "Netflix Trending", endpoint: TMDB_ENDPOINTS.trending },
   popular: {
-    title: "Popular on Netflix",
-    request: requests.fetchNetflixOriginals,
+    heading: "Popular on Netflix",
+    endpoint: TMDB_ENDPOINTS.netflixOriginals,
   },
-  topRated: { title: "Top Rated", request: requests.fetchTopRatedMovies },
-  action: { title: "Action", request: requests.fetchActionMovies },
-  comedy: { title: "Comedy", request: requests.fetchComedyMovies },
-  horror: { title: "Horror", request: requests.fetchHorrorMovies },
-  romance: { title: "Romance", request: requests.fetchRomanceMovies },
+  topRated: { heading: "Top Rated", endpoint: TMDB_ENDPOINTS.topRatedMovies },
+  action: { heading: "Action", endpoint: TMDB_ENDPOINTS.actionMovies },
+  comedy: { heading: "Comedy", endpoint: TMDB_ENDPOINTS.comedyMovies },
+  horror: { heading: "Horror", endpoint: TMDB_ENDPOINTS.horrorMovies },
+  romance: { heading: "Romance", endpoint: TMDB_ENDPOINTS.romanceMovies },
   documentaries: {
-    title: "Documentaries",
-    request: requests.fetchDocumentaries,
+    heading: "Documentaries",
+    endpoint: TMDB_ENDPOINTS.documentaries,
   },
 };
 
-const ALL_KEYS = Object.keys(ROWS);
+const ALL_CATEGORY_KEYS = Object.keys(CATEGORIES);
 
-function rowKeys({
+/**
+ * Picks which categories to show. The first `show...Only` flag that is set
+ * wins; with no flags every category is shown.
+ *
+ * @param {Object} filters
+ * @param {boolean} filters.showPopularOnly
+ * @param {boolean} filters.showActionOnly
+ * @param {boolean} filters.showTrendingOnly
+ * @param {boolean} filters.showTopRatedOnly
+ * @returns {string[]} Keys of `CATEGORIES` to render.
+ */
+function getVisibleCategoryKeys({
   showPopularOnly,
   showActionOnly,
   showTrendingOnly,
@@ -33,18 +46,29 @@ function rowKeys({
   if (showActionOnly) return ["action"];
   if (showTrendingOnly) return ["trending"];
   if (showTopRatedOnly) return ["topRated"];
-  return ALL_KEYS;
+  return ALL_CATEGORY_KEYS;
 }
 
-export default function DisplayRow({
+/**
+ * Fetches TMDB browse categories and renders one carousel per category.
+ * Renders nothing while loading and an error message if any request fails.
+ *
+ * @param {Object} props
+ * @param {boolean} [props.showPopularOnly=false] - Show only "Popular on Netflix".
+ * @param {boolean} [props.showActionOnly=false] - Show only "Action".
+ * @param {boolean} [props.showTrendingOnly=false] - Show only "Netflix Trending".
+ * @param {boolean} [props.showTopRatedOnly=false] - Show only "Top Rated".
+ * @returns {JSX.Element | null}
+ */
+export default function CategoryRows({
   showPopularOnly = false,
   showActionOnly = false,
   showTrendingOnly = false,
   showTopRatedOnly = false,
 }) {
-  const keys = useMemo(
+  const categoryKeys = useMemo(
     () =>
-      rowKeys({
+      getVisibleCategoryKeys({
         showPopularOnly,
         showActionOnly,
         showTrendingOnly,
@@ -52,56 +76,62 @@ export default function DisplayRow({
       }),
     [showPopularOnly, showActionOnly, showTrendingOnly, showTopRatedOnly],
   );
-  const [rows, setRows] = useState(null);
+  const [titlesByCategory, setTitlesByCategory] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
+    let isCancelled = false;
 
-    async function loadRows() {
-      if (!import.meta.env.VITE_TMDB_API_KEY) {
+    async function loadCategories() {
+      if (!hasTmdbApiKey()) {
         setError("Add VITE_TMDB_API_KEY before building this site.");
         return;
       }
 
       try {
-        const results = await Promise.all(
-          keys.map(async (key) => {
-            const { data } = await movieInstance.get(ROWS[key].request);
-            const movies = (data.results ?? []).filter(
-              (movie) => movie.poster_path,
+        const categoryEntries = await Promise.all(
+          categoryKeys.map(async (categoryKey) => {
+            const { data } = await tmdbClient.get(
+              CATEGORIES[categoryKey].endpoint,
             );
-            return [key, movies];
+            const titlesWithPosters = (data.results ?? []).filter(
+              (title) => title.poster_path,
+            );
+            return [categoryKey, titlesWithPosters];
           }),
         );
 
-        if (!cancelled) {
-          setRows(Object.fromEntries(results));
+        if (!isCancelled) {
+          setTitlesByCategory(Object.fromEntries(categoryEntries));
           setError("");
         }
       } catch {
-        if (!cancelled) {
+        if (!isCancelled) {
           setError("Movies could not be loaded. Check the API key and try again.");
         }
       }
     }
 
-    loadRows();
+    loadCategories();
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
-  }, [keys]);
+  }, [categoryKeys]);
 
   if (error) {
     return <p className={styles.error}>{error}</p>;
   }
 
-  if (!rows) return null;
+  if (!titlesByCategory) return null;
 
   return (
     <div className={styles.mainWrapper}>
-      {keys.map((key) => (
-        <SlideShow key={key} title={ROWS[key].title} movies={rows[key]} />
+      {categoryKeys.map((categoryKey) => (
+        <TitleCarousel
+          key={categoryKey}
+          heading={CATEGORIES[categoryKey].heading}
+          titles={titlesByCategory[categoryKey]}
+        />
       ))}
     </div>
   );

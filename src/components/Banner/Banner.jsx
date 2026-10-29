@@ -2,96 +2,111 @@ import { Check, Info, Play, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useMyList } from "../../context/useMyList";
 import { usePlayer } from "../../context/usePlayer";
-import bannerLogo from "../../assets/image/logo.png";
-import { movieInstance } from "../../Utility/MovieInstance";
-import requests from "../../Utility/requestUrls";
+import bannerLogo from "../../assets/images/logo.png";
+import { tmdbClient } from "../../services/tmdbClient";
+import TMDB_ENDPOINTS from "../../services/tmdbEndpoints";
 import styles from "./Banner.module.css";
 
-const IMAGE_BASE = "https://image.tmdb.org/t/p/original";
+const BACKDROP_BASE_URL = "https://image.tmdb.org/t/p/original";
+const MAX_OVERVIEW_LENGTH = 150;
 
-function truncate(str, length) {
-  if (!str) return "";
-  return str.length > length ? `${str.slice(0, length)}...` : str;
+/**
+ * Shortens text to `maxLength` characters, adding an ellipsis when cut.
+ *
+ * @param {string | undefined} text
+ * @param {number} maxLength
+ * @returns {string}
+ */
+function truncateText(text, maxLength) {
+  if (!text) return "";
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 }
 
+/**
+ * Renders the home page hero with a random Netflix original as the backdrop,
+ * plus Play, My List, and More Info actions for it.
+ *
+ * @returns {JSX.Element}
+ */
 export default function Banner() {
-  const [movie, setMovie] = useState(null);
-  const { has, toggle } = useMyList();
+  const [featuredTitle, setFeaturedTitle] = useState(null);
+  const { isInList, toggleInList } = useMyList();
   const { openTrailer, openInfo } = usePlayer();
-  const saved = movie ? has(movie) : false;
+  const isSaved = featuredTitle ? isInList(featuredTitle) : false;
 
   useEffect(() => {
-    const fetchBannerMovie = async () => {
+    const fetchFeaturedTitle = async () => {
       try {
-        const { data } = await movieInstance.get(
-          requests.fetchNetflixOriginals,
-        );
+        const { data } = await tmdbClient.get(TMDB_ENDPOINTS.netflixOriginals);
         const withBackdrop = (data.results ?? []).filter(
           (item) => item.backdrop_path,
         );
-        const pool = withBackdrop.length ? withBackdrop : data.results ?? [];
-        if (!pool.length) return;
-        setMovie(pool[Math.floor(Math.random() * pool.length)]);
+        const candidates = withBackdrop.length
+          ? withBackdrop
+          : data.results ?? [];
+        if (!candidates.length) return;
+        setFeaturedTitle(
+          candidates[Math.floor(Math.random() * candidates.length)],
+        );
       } catch {
-        setMovie(null);
+        setFeaturedTitle(null);
       }
     };
 
-    fetchBannerMovie();
+    fetchFeaturedTitle();
   }, []);
 
   return (
     <div
       className={styles.banner}
       style={
-        movie?.backdrop_path
+        featuredTitle?.backdrop_path
           ? {
-              backgroundImage: `url(${IMAGE_BASE}${movie.backdrop_path})`,
+              backgroundImage: `url(${BACKDROP_BASE_URL}${featuredTitle.backdrop_path})`,
             }
           : undefined
       }
     >
       <div className={styles.content}>
-        {/* Netflix logo */}
         <img className={styles.logoImg} src={bannerLogo} alt="Netflix Logo" />
 
-        {/* title */}
-        <h1 className={styles.title}>{movie?.title || movie?.name || ""}</h1>
+        <h1 className={styles.title}>
+          {featuredTitle?.title || featuredTitle?.name || ""}
+        </h1>
 
-        {/* description */}
-        <p className={styles.description}>{truncate(movie?.overview, 150)}</p>
+        <p className={styles.description}>
+          {truncateText(featuredTitle?.overview, MAX_OVERVIEW_LENGTH)}
+        </p>
 
-        {/* button */}
         <div className={styles.buttonContainer}>
           <button
             type="button"
             className={styles.button}
-            disabled={!movie}
-            onClick={() => openTrailer(movie)}
+            disabled={!featuredTitle}
+            onClick={() => openTrailer(featuredTitle)}
           >
             <Play size={24} /> Play
           </button>
           <button
             type="button"
-            className={`${styles.button} ${saved ? styles.listed : ""}`}
-            disabled={!movie}
-            onClick={() => toggle(movie)}
+            className={`${styles.button} ${isSaved ? styles.listed : ""}`}
+            disabled={!featuredTitle}
+            onClick={() => toggleInList(featuredTitle)}
           >
-            {saved ? <Check size={24} /> : <Plus size={24} />}
-            {saved ? "In My List" : "My List"}
+            {isSaved ? <Check size={24} /> : <Plus size={24} />}
+            {isSaved ? "In My List" : "My List"}
           </button>
           <button
             type="button"
             className={styles.button}
-            disabled={!movie}
-            onClick={() => openInfo(movie)}
+            disabled={!featuredTitle}
+            onClick={() => openInfo(featuredTitle)}
           >
             <Info size={24} /> More Info
           </button>
         </div>
       </div>
 
-      {/* fading effect */}
       <div className={styles.fadingEffect}></div>
     </div>
   );

@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import BackHome from "../../Components/BackHome/BackHome";
-import Card from "../../Components/Card/Card";
-import { searchTitles } from "../../Utility/tmdb";
+import BackToHomeLink from "../../components/BackToHomeLink/BackToHomeLink";
+import TitleCard from "../../components/TitleCard/TitleCard";
+import { searchTitles } from "../../services/tmdbService";
 import styles from "./Search.module.css";
 
+/**
+ * Search results page (`/search?q=...`): shows every TMDB movie and show that
+ * matches the `q` query parameter as a grid of title cards.
+ *
+ * @returns {JSX.Element}
+ */
 export default function Search() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q")?.trim() || "";
@@ -21,29 +27,29 @@ export default function Search() {
   useEffect(() => {
     if (!query) return undefined;
 
-    let cancelled = false;
+    let isCancelled = false;
 
-    async function load() {
+    async function loadResults() {
       try {
-        const found = await searchTitles(query);
-        if (!cancelled) {
-          setResults(found);
+        const matches = await searchTitles(query);
+        if (!isCancelled) {
+          setResults(matches);
           setStatus("ready");
         }
       } catch {
-        if (!cancelled) setStatus("error");
+        if (!isCancelled) setStatus("error");
       }
     }
 
-    load();
+    loadResults();
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
   }, [query]);
 
   return (
     <div className={styles.page}>
-      <BackHome />
+      <BackToHomeLink />
       <h1 className={styles.heading}>
         {query ? `Results for “${query}”` : "Search"}
       </h1>
@@ -59,8 +65,8 @@ export default function Search() {
       )}
       {results.length > 0 && (
         <div className={styles.grid}>
-          {results.map((movie) => (
-            <Card key={`${movie.media_type}-${movie.id}`} movie={movie} />
+          {results.map((result) => (
+            <TitleCard key={`${result.media_type}-${result.id}`} title={result} />
           ))}
         </div>
       )}

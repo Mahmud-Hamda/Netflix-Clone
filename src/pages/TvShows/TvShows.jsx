@@ -1,11 +1,16 @@
-import BackHome from "../../Components/BackHome/BackHome";
-import DisplayRow from "../../Components/DisplayRow/DisplayRow";
+import BackToHomeLink from "../../components/BackToHomeLink/BackToHomeLink";
+import CategoryRows from "../../components/CategoryRows/CategoryRows";
 import styles from "./TvShows.module.css";
 
+/**
+ * TV Shows page (`/tv`): the "Netflix Trending" row.
+ *
+ * @returns {JSX.Element}
+ */
 const TvShows = () => (
   <div className={styles.page}>
-    <BackHome />
-    <DisplayRow showTrendingOnly />
+    <BackToHomeLink />
+    <CategoryRows showTrendingOnly />
   </div>
 );
 

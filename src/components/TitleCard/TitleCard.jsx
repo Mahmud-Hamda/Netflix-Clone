@@ -4,25 +4,39 @@ import { FaCirclePlay } from "react-icons/fa6";
 import { IoIosArrowDropdownCircle } from "react-icons/io";
 import { useMyList } from "../../context/useMyList";
 import { usePlayer } from "../../context/usePlayer";
-import { genreLabels, titleOf } from "../../Utility/titles";
-import styles from "./Card.module.css";
+import { getDisplayTitle, getGenreNames } from "../../utils/titles";
+import styles from "./TitleCard.module.css";
 
-const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
+const POSTER_BASE_URL = "https://image.tmdb.org/t/p/w500";
 
-function IconAction({
+/**
+ * Renders an icon button with a tooltip. A disabled button stays focusable
+ * (it uses `aria-disabled`) so its tooltip can still explain why.
+ *
+ * @param {Object} props
+ * @param {string} props.label - Accessible name, also shown as the tooltip.
+ * @param {string} [props.className] - Extra class for the button.
+ * @param {boolean} [props.isDisabled] - Ignores clicks and dims the button.
+ * @param {boolean} [props.isPressed] - Sets `aria-pressed` for toggle buttons.
+ * @param {"start"} [props.tooltipAlign] - Aligns the tooltip to the button's start edge.
+ * @param {() => void} props.onClick - Called on click unless disabled.
+ * @param {import("react").ReactNode} props.children - The icon.
+ * @returns {JSX.Element}
+ */
+function IconActionButton({
   label,
   className,
-  disabled,
-  pressed,
-  tipAlign,
+  isDisabled,
+  isPressed,
+  tooltipAlign,
   onClick,
   children,
 }) {
-  const tipId = useId();
-  const classes = [
+  const tooltipId = useId();
+  const buttonClassName = [
     styles.iconHit,
-    disabled ? styles.iconDisabled : "",
-    tipAlign === "start" ? styles.tipStart : "",
+    isDisabled ? styles.iconDisabled : "",
+    tooltipAlign === "start" ? styles.tipStart : "",
     className,
   ]
     .filter(Boolean)
@@ -31,98 +45,100 @@ function IconAction({
   return (
     <button
       type="button"
-      className={classes}
+      className={buttonClassName}
       aria-label={label}
-      aria-describedby={tipId}
-      aria-disabled={disabled || undefined}
-      aria-pressed={pressed}
+      aria-describedby={tooltipId}
+      aria-disabled={isDisabled || undefined}
+      aria-pressed={isPressed}
       onClick={(event) => {
         event.stopPropagation();
-        if (disabled) return;
+        if (isDisabled) return;
         onClick();
       }}
     >
       {children}
-      <span id={tipId} className={styles.tooltip} role="tooltip">
+      <span id={tooltipId} className={styles.tooltip} role="tooltip">
         {label}
       </span>
     </button>
   );
 }
 
-export default function Card({ movie }) {
-  const { has, add, remove } = useMyList();
+/**
+ * Renders a poster card that expands on hover to show play, My List, and
+ * more-info actions plus the title's genres.
+ *
+ * @param {Object} props
+ * @param {import("../../services/tmdbService").Title} props.title - The movie or show to display.
+ * @returns {JSX.Element}
+ */
+export default function TitleCard({ title }) {
+  const { isInList, addToList, removeFromList } = useMyList();
   const { openTrailer, openInfo } = usePlayer();
-  const title = titleOf(movie);
-  const genres = genreLabels(movie);
-  const saved = has(movie);
+  const displayTitle = getDisplayTitle(title);
+  const genreNames = getGenreNames(title);
+  const isSaved = isInList(title);
 
   return (
     <div className={styles.card}>
-      {/* poster image */}
       <div className={styles.posterWrap}>
         <img
           className={styles.cardImage}
-          src={`${IMAGE_BASE}${movie?.poster_path}`}
-          alt={title}
+          src={`${POSTER_BASE_URL}${title?.poster_path}`}
+          alt={displayTitle}
         />
       </div>
 
-      {/* hover effect */}
       <div className={styles.hoverEffect}>
-        {/* image for hover effect */}
         <img
           className={styles.hoverImage}
-          src={`${IMAGE_BASE}${movie?.poster_path}`}
+          src={`${POSTER_BASE_URL}${title?.poster_path}`}
           alt=""
         />
 
         <div className={styles.hoverContent}>
-          {/* badge for hover effect */}
           <div className={styles.hoverBadge}>Recently added</div>
 
-          {/* buttons */}
           <div className={styles.buttonsRow}>
-            <IconAction
+            <IconActionButton
               label="Play trailer"
-              tipAlign="start"
-              onClick={() => openTrailer(movie)}
+              tooltipAlign="start"
+              onClick={() => openTrailer(title)}
             >
               <FaCirclePlay
                 className={`${styles.hoverButton} ${styles.circleButton}`}
               />
-            </IconAction>
-            <IconAction
-              label={saved ? "Already in My List" : "Add to My List"}
-              disabled={saved}
-              onClick={() => add(movie)}
+            </IconActionButton>
+            <IconActionButton
+              label={isSaved ? "Already in My List" : "Add to My List"}
+              isDisabled={isSaved}
+              onClick={() => addToList(title)}
             >
               <BsPlusCircle
-                className={`${styles.hoverButton} ${styles.addButton} ${saved ? styles.dimmed : ""}`}
+                className={`${styles.hoverButton} ${styles.addButton} ${isSaved ? styles.dimmed : ""}`}
               />
-            </IconAction>
-            <IconAction
-              label={saved ? "Remove from My List" : "Not in My List yet"}
-              disabled={!saved}
-              pressed={saved}
-              onClick={() => remove(movie)}
+            </IconActionButton>
+            <IconActionButton
+              label={isSaved ? "Remove from My List" : "Not in My List yet"}
+              isDisabled={!isSaved}
+              isPressed={isSaved}
+              onClick={() => removeFromList(title)}
             >
               <BsCheckLg
-                className={`${styles.hoverButton} ${styles.circleButton} ${saved ? styles.inList : styles.dimmed}`}
+                className={`${styles.hoverButton} ${styles.circleButton} ${isSaved ? styles.inList : styles.dimmed}`}
               />
-            </IconAction>
-            <IconAction
+            </IconActionButton>
+            <IconActionButton
               label="More info"
               className={styles.dropdownHit}
-              onClick={() => openInfo(movie)}
+              onClick={() => openInfo(title)}
             >
               <IoIosArrowDropdownCircle
                 className={`${styles.hoverButton} ${styles.dropdownButton}`}
               />
-            </IconAction>
+            </IconActionButton>
           </div>
 
-          {/* metadata */}
           <div className={styles.hoverMetadata}>
             <span className={styles.tag}>U/A 16+ </span>
             <span className={styles.tag}>Movies</span>
@@ -130,12 +146,11 @@ export default function Card({ movie }) {
           </div>
         </div>
 
-        {/* movies genres */}
         <div className={styles.hoverGenres}>
-          {genres.map((genre, index) => (
-            <span key={genre}>
-              {genre}
-              {index < genres.length - 1 && (
+          {genreNames.map((genreName, index) => (
+            <span key={genreName}>
+              {genreName}
+              {index < genreNames.length - 1 && (
                 <span className={styles.dot}>•</span>
               )}
             </span>

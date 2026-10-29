@@ -2,17 +2,26 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { usePlayer } from "../../context/usePlayer";
 import { useProfile } from "../../context/useProfile";
-import { listKey, titleOf, toListItem } from "../../Utility/titles";
-import { fetchTrendingNotifications } from "../../Utility/tmdb";
+import { getDisplayTitle, getTitleKey, normalizeTitle } from "../../utils/titles";
+import { fetchTrendingNotifications } from "../../services/tmdbService";
 import styles from "./Header.module.css";
 
-const STORAGE_KEY = "netflix-clone-seen";
-const POSTER_BASE = "https://image.tmdb.org/t/p/w92";
+const SEEN_STORAGE_KEY = "netflix-clone-seen";
+// Older builds stored one shared array; it is kept under this field until the
+// first account signs in and claims it.
+const LEGACY_SEEN_FIELD = "__legacy";
+const MAX_SEEN_KEYS = 200;
+const POSTER_BASE_URL = "https://image.tmdb.org/t/p/w92";
 
+/**
+ * Reads the per-account record of notifications the user has already seen.
+ *
+ * @returns {Record<string, string[]>} Seen title keys keyed by account id.
+ */
 function readSeenMap() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    if (Array.isArray(parsed)) return { __legacy: parsed };
+    const parsed = JSON.parse(localStorage.getItem(SEEN_STORAGE_KEY) || "{}");
+    if (Array.isArray(parsed)) return { [LEGACY_SEEN_FIELD]: parsed };
     if (parsed && typeof parsed === "object") return parsed;
   } catch {
     /* start with an empty seen map when storage cannot be read */
@@ -20,98 +29,127 @@ function readSeenMap() {
   return {};
 }
 
+/**
+ * Renders the bell button with an unread count and a dropdown of today's
+ * trending titles. Opening the dropdown marks every listed title as seen for
+ * the signed-in account.
+ *
+ * @returns {JSX.Element}
+ */
 export default function NotificationMenu() {
   const { openInfo } = usePlayer();
   const { userId } = useProfile();
   const containerRef = useRef(null);
-  const [open, setOpen] = useState(false);
-  const [notes, setNotes] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const [status, setStatus] = useState("loading");
   const [seenMap, setSeenMap] = useState(readSeenMap);
 
-  const openRef = useRef(false);
+  // Mirrors `isOpen` so the fetch effect can read it without re-running.
+  const isOpenRef = useRef(false);
 
   if (
     userId &&
-    Array.isArray(seenMap.__legacy) &&
+    Array.isArray(seenMap[LEGACY_SEEN_FIELD]) &&
     seenMap[userId] === undefined
   ) {
-    const legacy = seenMap.__legacy;
-    setSeenMap((current) => {
-      if (current[userId] !== undefined) return current;
-      const next = { ...current, [userId]: legacy };
-      delete next.__legacy;
-      return next;
+    const legacySeenKeys = seenMap[LEGACY_SEEN_FIELD];
+    setSeenMap((currentSeenMap) => {
+      if (currentSeenMap[userId] !== undefined) return currentSeenMap;
+      const nextSeenMap = { ...currentSeenMap, [userId]: legacySeenKeys };
+      delete nextSeenMap[LEGACY_SEEN_FIELD];
+      return nextSeenMap;
     });
   }
 
-  const seen = userId && Array.isArray(seenMap[userId]) ? seenMap[userId] : [];
+  const seenKeys =
+    userId && Array.isArray(seenMap[userId]) ? seenMap[userId] : [];
 
-  const remember = useCallback((list) => {
-    if (!userId) return;
-    setSeenMap((current) => {
-      const previous = Array.isArray(current[userId]) ? current[userId] : [];
-      const merged = [
-        ...new Set([...previous, ...list.map((note) => listKey(note))]),
-      ].slice(-200);
-      if (
-        merged.length === previous.length &&
-        merged.every((id, index) => id === previous[index])
-      ) {
-        return current;
-      }
-      const next = { ...current, [userId]: merged };
-      delete next.__legacy;
-      return next;
-    });
-  }, [userId]);
+  const markAsSeen = useCallback(
+    (titles) => {
+      if (!userId) return;
+      setSeenMap((currentSeenMap) => {
+        const previousKeys = Array.isArray(currentSeenMap[userId])
+          ? currentSeenMap[userId]
+          : [];
+        const mergedKeys = [
+          ...new Set([...previousKeys, ...titles.map((title) => getTitleKey(title))]),
+        ].slice(-MAX_SEEN_KEYS);
+        if (
+          mergedKeys.length === previousKeys.length &&
+          mergedKeys.every((key, index) => key === previousKeys[index])
+        ) {
+          return currentSeenMap;
+        }
+        const nextSeenMap = { ...currentSeenMap, [userId]: mergedKeys };
+        delete nextSeenMap[LEGACY_SEEN_FIELD];
+        return nextSeenMap;
+      });
+    },
+    [userId],
+  );
 
   useEffect(() => {
-    const stored = { ...seenMap };
-    delete stored.__legacy;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    const storedSeenMap = { ...seenMap };
+    delete storedSeenMap[LEGACY_SEEN_FIELD];
+    localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify(storedSeenMap));
   }, [seenMap]);
 
   useEffect(() => {
-    let cancelled = false;
+    let isCancelled = false;
 
-    async function loadNotes() {
+    async function loadNotifications() {
       try {
-        const found = await fetchTrendingNotifications();
-        if (cancelled) return;
-        const items = found.map(toListItem);
-        setNotes(items);
+        const trendingTitles = await fetchTrendingNotifications();
+        if (isCancelled) return;
+        const normalizedTitles = trendingTitles.map(normalizeTitle);
+        setNotifications(normalizedTitles);
         setStatus("ready");
-        if (openRef.current) remember(items);
+        if (isOpenRef.current) markAsSeen(normalizedTitles);
       } catch {
-        if (!cancelled) setStatus("error");
+        if (!isCancelled) setStatus("error");
       }
     }
 
-    loadNotes();
+    loadNotifications();
     return () => {
-      cancelled = true;
+      isCancelled = true;
     };
-  }, [remember]);
+  }, [markAsSeen]);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!isOpen) return undefined;
 
     const handleClickOutside = (event) => {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target)
       ) {
-        openRef.current = false;
-        setOpen(false);
+        isOpenRef.current = false;
+        setIsOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
+  }, [isOpen]);
 
-  const unread = notes.filter((note) => !seen.includes(listKey(note))).length;
+  const unreadCount = notifications.filter(
+    (notification) => !seenKeys.includes(getTitleKey(notification)),
+  ).length;
+
+  const handleToggle = () => {
+    const nextIsOpen = !isOpen;
+    isOpenRef.current = nextIsOpen;
+    setIsOpen(nextIsOpen);
+    if (nextIsOpen) markAsSeen(notifications);
+  };
+
+  const handleNotificationClick = (notification) => {
+    openInfo(notification);
+    isOpenRef.current = false;
+    setIsOpen(false);
+  };
 
   return (
     <div className={styles.menuWrap} ref={containerRef}>
@@ -119,18 +157,15 @@ export default function NotificationMenu() {
         type="button"
         className={styles.notificationButton}
         aria-label="Notifications"
-        aria-expanded={open}
-        onClick={() => {
-          const next = !open;
-          openRef.current = next;
-          setOpen(next);
-          if (next) remember(notes);
-        }}
+        aria-expanded={isOpen}
+        onClick={handleToggle}
       >
         <Bell size={20} />
-        {unread > 0 && <span className={styles.notificationCount}>{unread}</span>}
+        {unreadCount > 0 && (
+          <span className={styles.notificationCount}>{unreadCount}</span>
+        )}
       </button>
-      {open && (
+      {isOpen && (
         <div className={styles.panel}>
           <p className={styles.panelTitle}>New and trending</p>
           {status === "loading" && (
@@ -141,26 +176,22 @@ export default function NotificationMenu() {
               Notifications could not be loaded.
             </p>
           )}
-          {status === "ready" && notes.length === 0 && (
+          {status === "ready" && notifications.length === 0 && (
             <p className={styles.panelMessage}>No new titles right now.</p>
           )}
-          {notes.map((note) => (
+          {notifications.map((notification) => (
             <button
-              key={listKey(note)}
+              key={getTitleKey(notification)}
               type="button"
               className={styles.resultButton}
-              onClick={() => {
-                openInfo(note);
-                openRef.current = false;
-                setOpen(false);
-              }}
+              onClick={() => handleNotificationClick(notification)}
             >
               <img
                 className={styles.resultPoster}
-                src={`${POSTER_BASE}${note.poster_path}`}
+                src={`${POSTER_BASE_URL}${notification.poster_path}`}
                 alt=""
               />
-              <span>{titleOf(note)}</span>
+              <span>{getDisplayTitle(notification)}</span>
             </button>
           ))}
         </div>

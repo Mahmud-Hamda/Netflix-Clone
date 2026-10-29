@@ -1,40 +1,39 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import logo from "../../assets/image/logo.png";
+import logo from "../../assets/images/logo.png";
 import { useProfile } from "../../context/useProfile";
+import { getPostAuthDestination } from "../../utils/authRedirect";
 import styles from "./SignIn.module.css";
 
-function destinationFrom(location) {
-  const requested = location.state?.from;
-  if (requested && requested !== "/signin" && requested !== "/signup") {
-    return requested;
-  }
-  return "/home";
-}
-
+/**
+ * Sign-in page (`/signin`). On success, or if already signed in, it redirects
+ * to the page the user originally requested.
+ *
+ * @returns {JSX.Element}
+ */
 export default function SignIn() {
-  const { signedIn, signIn } = useProfile();
+  const { isSignedIn, signIn } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [pending, setPending] = useState(false);
-  const destination = destinationFrom(location);
+  const [isPending, setIsPending] = useState(false);
+  const destination = getPostAuthDestination(location);
 
-  if (signedIn) {
+  if (isSignedIn) {
     return <Navigate to={destination} replace />;
   }
 
-  const submit = async (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (pending) return;
-    setPending(true);
+    if (isPending) return;
+    setIsPending(true);
     setError("");
     const result = await signIn({ email, password });
     if (!result.ok) {
       setError(result.error);
-      setPending(false);
+      setIsPending(false);
       return;
     }
     navigate(destination, { replace: true });
@@ -42,7 +41,7 @@ export default function SignIn() {
 
   return (
     <main className={styles.page}>
-      <form className={styles.card} onSubmit={submit}>
+      <form className={styles.card} onSubmit={handleSubmit}>
         <img className={styles.logo} src={logo} alt="Netflix" />
         <h1 className={styles.title}>Sign in</h1>
         <p className={styles.note}>
@@ -77,8 +76,8 @@ export default function SignIn() {
           />
         </div>
         {error && <p className={styles.error}>{error}</p>}
-        <button type="submit" className={styles.button} disabled={pending}>
-          {pending ? "Signing in..." : "Sign In"}
+        <button type="submit" className={styles.button} disabled={isPending}>
+          {isPending ? "Signing in..." : "Sign In"}
         </button>
         <p className={styles.switch}>
           New here?{" "}
