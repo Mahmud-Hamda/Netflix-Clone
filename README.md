@@ -2,6 +2,10 @@
 
 A movie and TV browser styled after Netflix. Posters, backdrops, descriptions, and trailers come from [TMDB](https://www.themoviedb.org/). This is a student project and is not affiliated with Netflix.
 
+**Live demo:** [netflix-clone-yscv.vercel.app](https://netflix-clone-yscv.vercel.app)
+
+![Architecture](docs/architecture.jpg)
+
 ## Features
 
 - Home, TV Shows, Movies, and New & Popular rows from TMDB
